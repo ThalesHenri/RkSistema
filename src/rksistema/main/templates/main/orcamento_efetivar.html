@@ -1,0 +1,74 @@
+{% extends "main/base.html" %}
+{% block title %}Efetivar orçamento — RK Embalagens{% endblock %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>Efetivar orçamento #{{ pedido.pk }}</h1>
+    <p>
+      O orçamento será transformado em um <strong>pedido real</strong> (com baixa no
+      estoque) e <strong>excluído</strong> do sistema — evitando registros duplicados.
+    </p>
+  </div>
+  <a href="{% url 'pedidos' %}" class="btn btn-secundario">Voltar</a>
+</div>
+
+<div class="painel">
+  <div class="painel-cabecalho">
+    <h2>Itens do orçamento</h2>
+  </div>
+  <table class="tabela">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th class="col-direita">Quantidade</th>
+        <th class="col-direita">Preço unit.</th>
+        <th class="col-direita">Saldo disponível</th>
+        <th>Situação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in linhas %}
+        <tr>
+          <td>{{ linha.item.sku.produto.nome }} — {{ linha.item.sku.codigo }}</td>
+          <td class="col-direita"><strong>{{ linha.item.quantidade|floatformat:2 }}</strong></td>
+          <td class="col-direita">
+            {% if linha.item.preco_unitario is not None %}{{ linha.item.preco_unitario|floatformat:2 }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="col-direita">{{ linha.saldo|floatformat:2 }}</td>
+          <td>
+            {% if linha.saldo < linha.item.quantidade %}<span class="badge badge-perigo">Saldo insuficiente</span>
+            {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">Este orçamento não possui itens.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="ajuda">
+    {% if clientes_do_pedido|length > 1 %}Clientes{% else %}Cliente{% endif %}:
+    {% for c in clientes_do_pedido %}{{ c }}{% if not forloop.last %} · {% endif %}{% empty %}{{ pedido.parceiro|default:"—" }}{% endfor %}
+    · Depósito: {{ pedido.deposito.nome }}
+  </p>
+</div>
+
+{% if insuficiente %}
+  <div class="alerta alerta-erro">
+    <p>Há itens sem saldo suficiente para a efetivação.</p>
+    <p>O orçamento permanece salvo — registre a produção/entrada necessária ou edite o orçamento.</p>
+  </div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <div class="acoes-form">
+    <a href="{% url 'pedidos' %}" class="btn btn-secundario">Cancelar</a>
+    <button type="submit" class="btn btn-primario" {% if insuficiente %}disabled{% endif %}>
+      Efetivar (criar pedido e excluir orçamento)
+    </button>
+  </div>
+</form>
+
+{% endblock %}

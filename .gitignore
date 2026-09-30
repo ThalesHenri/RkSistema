@@ -1,0 +1,40 @@
+# Ambiente Virtual Python
+.venv/
+venv/
+ENV/
+env/
+
+# Dependências de outras plataformas (caso use Node/PHP também)
+/node_modules
+/vendor
+
+# Arquivos de Cache do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos de Ambiente e Configuração Sensíveis (Senhas, APIs, Banco de Dados)
+.env
+.env.local
+.env.*.local
+
+# Bancos de dados locais (SQLite e dumps)
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+/dump.sql
+
+# Logs e arquivos de depuração
+*.log
+logs/
+
+# Arquivos de IDE e Editores (VS Code, PyCharm, etc.)
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db

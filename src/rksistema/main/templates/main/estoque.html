@@ -1,0 +1,180 @@
+{% extends "main/base.html" %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>Estoque — saldos</h1>
+    <p>Posição de estoque por SKU. Filtre por depósito para ver a posição local.</p>
+  </div>
+  <div class="acoes-titulo">
+    <a href="{% url 'movimentacao_entrada' %}" class="btn btn-primario">↑ Registrar entrada</a>
+    <a href="{% url 'movimentacao_saida' %}" class="btn btn-perigo">↓ Registrar saída</a>
+  </div>
+</div>
+
+<form method="get" class="filtros filtros-multiplos">
+  <label for="deposito">Depósito</label>
+  <select name="deposito" id="deposito" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for d in depositos %}
+      <option value="{{ d.pk }}" {% if deposito_filtro and deposito_filtro.pk == d.pk %}selected{% endif %}>{{ d.nome }}</option>
+    {% endfor %}
+  </select>
+  <label for="tipo_produto">Tipo Produto</label>
+  <select name="tipo_produto" id="tipo_produto" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for tipo in tipos_produto %}
+      <option value="{{ tipo.pk }}" {% if tipo_produto_filtro == tipo.pk %}selected{% endif %}>{{ tipo.nome }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if linhas %}
+  <div class="cartao-tabela">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Tipo</th>
+          <th>Código</th>
+          <th>Descrição</th>
+          <th>Un.</th>
+          <th class="col-direita">Saldo</th>
+          <th class="col-direita">Est. mínimo</th>
+          <th>Situação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in linhas %}
+          <tr>
+            <td>{{ linha.produto }}</td>
+            <td><span class="badge {{ linha.tipo.classe }}">{{ linha.tipo.label }}</span></td>
+            <td>{{ linha.codigo }}</td>
+            <td>{{ linha.descricao }}</td>
+            <td>{{ linha.unidade }}</td>
+            <td class="col-direita"><strong>{{ linha.saldo|floatformat:2 }}</strong></td>
+            <td class="col-direita">{{ linha.estoque_minimo|floatformat:2 }}</td>
+            <td>
+              {% if linha.baixo %}<span class="badge badge-perigo">Estoque baixo</span>
+              {% elif linha.saldo == 0 %}<span class="badge badge-off">Zerado</span>
+              {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+              {% if linha.saldos_depositos %}
+                <details class="detalhe-saldo">
+                  <summary>por depósito</summary>
+                  <ul>
+                    {% for d in linha.saldos_depositos %}
+                      <li>{{ d.nome }}: <strong>{{ d.saldo|floatformat:2 }}</strong></li>
+                    {% endfor %}
+                  </ul>
+                </details>
+              {% endif %}
+              {% if linha.saldos_clientes %}
+                <details class="detalhe-saldo">
+                  <summary>por cliente</summary>
+                  <ul>
+                    {% for c in linha.saldos_clientes %}
+                      <li>{{ c.cliente }}: <strong>{{ c.saldo|floatformat:2 }}</strong></li>
+                    {% endfor %}
+                  </ul>
+                </details>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="vazio">Nenhum SKU cadastrado. Crie um <a href="{% url 'sku_create' %}">SKU</a> para começar.</div>
+{% endif %}
+
+{% if saldos_clientes_painel %}
+  <div class="painel">
+    <div class="painel-cabecalho">
+      <h2>Saldos por cliente</h2>
+      <a href="{% url 'saldos_clientes_limpar' %}" class="btn btn-perigo btn-pequeno"
+         title="Desvincular o cliente das produções destinadas e recalcular os saldos">Limpar saldos por cliente</a>
+    </div>
+    <p class="ajuda">
+      Produto em estoque destinado a cada cliente: produção destinada (+) menos
+      os itens de pedidos marcados explicitamente como reserva (−). Entradas
+      que não sejam produção destinada e vendas sem reserva não alteram este saldo.
+      Abra as entradas de cada linha para desvincular o cliente de uma entrada
+      específica, ou use "Limpar saldos por cliente" para remover os vínculos
+      das produções destinadas (outras movimentações e saldos de estoque não mudam).
+    </p>
+    <p class="ajuda dica-rolagem" id="dica-rolagem-clientes">
+      Em telas pequenas, deslize a tabela para os lados para ver todas as colunas.
+    </p>
+    <div class="cartao-tabela tabela-rolagem-clientes" role="region"
+         aria-label="Saldos de estoque por cliente" tabindex="0"
+         aria-describedby="dica-rolagem-clientes">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Produto</th>
+            <th>Código</th>
+            <th class="col-direita">Destinado</th>
+            <th>Entradas (detalhe)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for grupo in saldos_clientes_painel %}
+            {% for item in grupo.itens %}
+              <tr>
+                <td><strong>{{ grupo.cliente }}</strong></td>
+                <td>{{ item.sku.produto.nome }}</td>
+                <td>{{ item.sku.codigo }}</td>
+                <td class="col-direita">
+                  <div class="saldo-cliente-valor">
+                    <strong>{{ item.saldo|floatformat:2 }}</strong>
+                    <details class="saldo-cliente-edicao">
+                      <summary class="btn btn-secundario btn-pequeno">Editar</summary>
+                      <form method="post"
+                            action="{% url 'saldo_cliente_atualizar' grupo.cliente_obj.pk item.sku.pk %}"
+                            class="saldo-cliente-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="deposito" value="{{ deposito_filtro.pk|default:'' }}">
+                        <label class="sr-only" for="saldo-cliente-{{ grupo.cliente_obj.pk }}-{{ item.sku.pk }}">
+                          Novo saldo destinado
+                        </label>
+                        <input id="saldo-cliente-{{ grupo.cliente_obj.pk }}-{{ item.sku.pk }}"
+                               type="number" name="saldo" step="0.01" value="{{ item.saldo|floatformat:2 }}"
+                               required aria-label="Novo saldo destinado">
+                        <button type="submit" class="btn btn-primario btn-pequeno">Salvar</button>
+                      </form>
+                    </details>
+                  </div>
+                  {% if item.negativo %}<span class="badge badge-perigo">entregue além do destinado</span>{% endif %}
+                </td>
+                <td>
+                  <details class="detalhe-saldo">
+                    <summary>ver entradas ({{ item.entradas|length }})</summary>
+                    <ul>
+                      {% for e in item.entradas %}
+                        <li>
+                          {{ e.data_movimentacao|date:"d/m/Y" }} —
+                          {{ e.get_origem_display }}:
+                          {{ e.quantidade|floatformat:2 }}
+                          {% if e.documento %}(doc. {{ e.documento }}){% endif %}
+                          <form method="post" action="{% url 'movimentacao_desvincular_cliente' e.pk %}" style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link btn-link-perigo"
+                                    title="Desvincular o cliente desta entrada (o estoque não muda)">desvincular</button>
+                          </form>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

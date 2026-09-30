@@ -1,0 +1,42 @@
+{% extends "main/base.html" %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>{{ titulo }}</h1>
+    <p>Confira o saldo do SKU e do depósito antes de confirmar.</p>
+  </div>
+  <a href="{% url 'estoque' %}" class="btn btn-secundario">Ver saldos</a>
+</div>
+
+<form method="post" novalidate class="form-card form-duas-colunas">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alerta alerta-erro">
+      {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  {% for campo in form %}
+    <div class="campo {% if campo.errors %}campo-erro{% endif %}">
+      <label for="{{ campo.id_for_label }}">
+        {{ campo.label }}{% if campo.field.required %} <span class="obrigatorio">*</span>{% endif %}
+      </label>
+      {{ campo }}
+      {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+      {% for erro in campo.errors %}<span class="texto-erro">{{ erro }}</span>{% endfor %}
+    </div>
+  {% endfor %}
+
+  {% if 'saida' in request.path %}
+    <p class="ajuda">Para uma saída com vários SKUs, preencha os campos adicionais acima. Todos os itens serão registrados no mesmo pedido.</p>
+  {% endif %}
+
+  <div class="acoes-form">
+    <a href="{% url 'movimentacoes' %}" class="btn btn-secundario">Cancelar</a>
+    <button type="submit" class="btn btn-primario">Confirmar</button>
+  </div>
+</form>
+
+{% endblock %}

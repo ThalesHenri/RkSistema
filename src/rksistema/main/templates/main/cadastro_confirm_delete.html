@@ -1,0 +1,23 @@
+{% extends "main/base.html" %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <h1>{{ titulo }}</h1>
+</div>
+
+<div class="form-card">
+  <p class="texto-confirmacao">
+    {% if texto_confirmacao %}{{ texto_confirmacao }}{% else %}
+    Tem certeza que deseja excluir <strong>"{{ object }}"</strong>? Esta ação não pode ser desfeita.
+    {% endif %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="acoes-form">
+      <a href="{% url url_lista %}" class="btn btn-secundario">Cancelar</a>
+      <button type="submit" class="btn btn-perigo">{{ rotulo_acao|default:"Excluir definitivamente" }}</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

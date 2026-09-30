@@ -1,0 +1,144 @@
+{% extends "main/base.html" %}
+{% load static %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>{{ titulo }}</h1>
+    {% if eh_orcamento %}
+      <p>Monte o orçamento com os itens e preços negociados. Ele <strong>não movimenta o estoque</strong> e pode ser efetivado depois em Pedidos.</p>
+    {% else %}
+      <p>Adicione quantos itens precisar e ajuste o preço unitário de cada SKU.</p>
+    {% endif %}
+  </div>
+  <a href="{% url 'estoque' %}" class="btn btn-secundario">Ver saldos</a>
+</div>
+
+<form method="post" novalidate class="form-card form-saida" id="form-saida" data-pedido-form>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alerta alerta-erro">
+      {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <fieldset class="grupo-form">
+    <legend>Dados do pedido</legend>
+    <div class="grid-campos">
+      {% include "main/_campo_form.html" with campo=form.deposito %}
+      {% if not eh_orcamento %}
+        {% include "main/_campo_form.html" with campo=form.origem %}
+      {% endif %}
+      {% include "main/_campo_form.html" with campo=form.parceiro %}
+      {% include "main/_campo_form.html" with campo=form.documento %}
+      {% include "main/_campo_form.html" with campo=form.forma_pagamento %}
+      {% include "main/_campo_form.html" with campo=form.prazo_pagamento %}
+      {% if not eh_orcamento %}
+        <div class="campo-wide campo-check">
+          <label for="{{ form.reservado.id_for_label }}" class="label-check">
+            {{ form.reservado }} {{ form.reservado.label }}
+          </label>
+          {% if form.reservado.help_text %}<p class="ajuda">{{ form.reservado.help_text }}</p>{% endif %}
+          {% for erro in form.reservado.errors %}<span class="texto-erro">{{ erro }}</span>{% endfor %}
+        </div>
+      {% endif %}
+      <div class="campo-wide">
+        {% include "main/_campo_form.html" with campo=form.observacao %}
+      </div>
+      <div class="campo-wide campo-check">
+        <label for="{{ form.tem_clientes_adicionais.id_for_label }}" class="label-check">
+          {{ form.tem_clientes_adicionais }} {{ form.tem_clientes_adicionais.label }}
+        </label>
+        {% if form.tem_clientes_adicionais.help_text %}
+          <p class="ajuda">{{ form.tem_clientes_adicionais.help_text }}</p>
+        {% endif %}
+        {% for erro in form.tem_clientes_adicionais.errors %}
+          <span class="texto-erro">{{ erro }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="grupo-form">
+    <legend>{% if eh_orcamento %}Itens do orçamento{% else %}Itens do pedido{% endif %}</legend>
+    <div class="tabela-itens">
+      <div class="linha-item linha-item-cabecalho">
+        <span>SKU</span>
+        <span>Quantidade</span>
+        <span>Preço unitário (R$)</span>
+        <span></span>
+      </div>
+
+      <div class="linha-item" data-indice="1">
+        {% include "main/_campo_item.html" with campo=form.sku %}
+        {% include "main/_campo_item.html" with campo=form.quantidade %}
+        {% include "main/_campo_item.html" with campo=form.preco_unitario %}
+        <div class="celula-remover"></div>
+      </div>
+
+      {% for sku_extra, qtd_extra, preco_extra in form.itens_adicionais %}
+        <div class="linha-item" data-indice="{{ forloop.counter|add:1 }}">
+          {% include "main/_campo_item.html" with campo=sku_extra %}
+          {% include "main/_campo_item.html" with campo=qtd_extra %}
+          {% include "main/_campo_item.html" with campo=preco_extra %}
+          <div class="celula-remover">
+            <button type="button" class="btn btn-link btn-link-perigo remover-linha">Remover</button>
+          </div>
+        </div>
+      {% endfor %}
+
+      <div id="linhas-adicionais"></div>
+    </div>
+    <p class="ajuda">
+      Vazio = usa o preço cadastrado no SKU.
+      {% if eh_orcamento %}Os itens formam um único orçamento e não movimentam o estoque.{% else %}Todos os itens serão registrados no mesmo pedido.{% endif %}
+    </p>
+    <button type="button" id="btn-adicionar-item" class="btn btn-secundario">＋ Adicionar item</button>
+  </fieldset>
+
+  <div id="area-clientes-adicionais" {% if not form.blocos %}hidden{% endif %}>
+    <fieldset class="grupo-form">
+      <legend>Clientes adicionais</legend>
+      <p class="ajuda">
+        Cada bloco reúne os itens de um cliente. Todos ficam no mesmo pedido
+        — e no mesmo PDF.
+      </p>
+      <div id="blocos-adicionais">
+        {% for bloco in form.blocos %}
+          {% include "main/_bloco_cliente.html" with bloco=bloco %}
+        {% endfor %}
+      </div>
+      <button type="button" id="btn-adicionar-cliente" class="btn btn-secundario">＋ Adicionar cliente</button>
+    </fieldset>
+  </div>
+
+  {# Modelo oculto usado pelo JS para clonar os selects de SKU das linhas extras #}
+  <select id="modelo-select-sku" class="form-control" hidden>
+    <option value="">---------</option>
+    {% for opcao in skus_opcoes %}
+      <option value="{{ opcao.pk }}">{{ opcao.rotulo }}</option>
+    {% endfor %}
+  </select>
+
+  {# Modelo oculto usado pelo JS para clonar os selects de cliente dos blocos #}
+  <select id="modelo-select-cliente" class="form-control" hidden>
+    <option value="">---------</option>
+    {% for opcao in clientes_opcoes %}
+      <option value="{{ opcao.pk }}">{{ opcao.rotulo }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="acoes-form">
+    {% if eh_orcamento %}
+      <a href="{% url 'pedidos' %}" class="btn btn-secundario">Cancelar</a>
+    {% else %}
+      <a href="{% url 'movimentacoes' %}" class="btn btn-secundario">Cancelar</a>
+    {% endif %}
+    <button type="submit" class="btn btn-primario">Confirmar</button>
+  </div>
+</form>
+
+<script src="{% static 'main/js/pedido_form.js' %}?v=20260928-2"></script>
+
+{% endblock %}

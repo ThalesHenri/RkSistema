@@ -1,0 +1,36 @@
+{# Um bloco de CLIENTE ADICIONAL de pedido/orçamento (campo `bloco`). #}
+<fieldset class="grupo-form bloco-cliente-adicional" data-bloco="{{ bloco.indice }}">
+  <legend>Cliente adicional {{ bloco.indice }}</legend>
+
+  <div class="grid-campos">
+    <div class="campo {% if bloco.cliente.errors %}campo-erro{% endif %}">
+      <label for="{{ bloco.cliente.id_for_label }}">{{ bloco.cliente.label }}</label>
+      {{ bloco.cliente }}
+      {% for erro in bloco.cliente.errors %}<span class="texto-erro">{{ erro }}</span>{% endfor %}
+    </div>
+  </div>
+
+  <div class="tabela-itens">
+    <div class="linha-item linha-item-cabecalho">
+      <span>SKU</span>
+      <span>Quantidade</span>
+      <span>Preço unitário (R$)</span>
+      <span></span>
+    </div>
+    {% for linha in bloco.linhas %}
+      <div class="linha-item" data-indice="{{ linha.indice }}">
+        {% include "main/_campo_item.html" with campo=linha.sku %}
+        {% include "main/_campo_item.html" with campo=linha.quantidade %}
+        {% include "main/_campo_item.html" with campo=linha.preco_unitario %}
+        <div class="celula-remover">
+          <button type="button" class="btn btn-link btn-link-perigo remover-linha">Remover</button>
+        </div>
+      </div>
+    {% endfor %}
+    <div class="linhas-adicionais"></div>
+  </div>
+
+  <p class="ajuda">Itens deste cliente. Preço vazio = usa o preço cadastrado no SKU.</p>
+  <button type="button" class="btn btn-secundario btn-adicionar-item-bloco">＋ Adicionar item</button>
+  <button type="button" class="btn btn-link btn-link-perigo remover-bloco">Remover este cliente</button>
+</fieldset>

@@ -1,0 +1,153 @@
+{% extends "main/base.html" %}
+{% load querystring_tags %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>{% if parceiro_filtro %}Movimentações de {{ parceiro_filtro.nome_fantasia|default:parceiro_filtro.razao_social }}{% else %}Movimentações{% endif %}</h1>
+    <p>Histórico de entradas e saídas de estoque. Em saídas, edite o preço, o status do pedido e o pagamento direto na linha.</p>
+  </div>
+  <div class="acoes-titulo">
+    <a href="{% url 'movimentacao_entrada' %}" class="btn btn-primario">↑ Entrada</a>
+    <a href="{% url 'movimentacao_saida' %}" class="btn btn-perigo">↓ Saída</a>
+    <a href="{% url 'movimentacoes_relatorio_pdf' %}?parceiro={{ request.GET.parceiro|urlencode }}&status={{ request.GET.status|urlencode }}" class="btn btn-secundario" title="Emitir PDF com os pedidos de clientes filtrados">PDF pedidos</a>
+  </div>
+</div>
+
+<form method="get" class="filtros filtros-multiplos">
+  <label for="parceiro">Cliente</label>
+  <select name="parceiro" id="parceiro" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for p in parceiros %}
+      <option value="{{ p.pk }}" {% if parceiro_filtro and parceiro_filtro.pk == p.pk %}selected{% endif %}>{{ p.nome_fantasia|default:p.razao_social }}</option>
+    {% endfor %}
+  </select>
+  <label for="status">Status do pedido</label>
+  <select name="status" id="status" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for valor, rotulo in status_choices %}
+      <option value="{{ valor }}" {% if status_filtro == valor %}selected{% endif %}>{{ rotulo }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if movimentacoes %}
+  <div class="cartao-tabela">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Tipo</th>
+          <th>Origem</th>
+          <th>SKU</th>
+          <th>Depósito</th>
+          <th class="col-direita">Qtd.</th>
+          <th class="col-direita">Preço unit.</th>
+          <th class="col-direita">Total</th>
+          <th>Status do pedido</th>
+          <th>Pagamento</th>
+          <th>Prazo</th>
+          <th>Cliente</th>
+          <th>Doc.</th>
+          <th>PDF pedido</th>
+          <th class="col-acoes">Ações</th>
+          <th>Usuário</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimentacoes %}
+          <tr>
+            <td>{{ m.data_movimentacao|date:"d/m/Y H:i" }}</td>
+            <td>
+              {% if m.tipo == 'ENTRADA' %}<span class="badge badge-ok">Entrada</span>
+              {% elif m.tipo == 'SAIDA' %}<span class="badge badge-perigo">Saída</span>
+              {% elif m.tipo == 'AJUSTE_POSITIVO' %}<span class="badge badge-info">Ajuste +</span>
+              {% else %}<span class="badge badge-info">Ajuste −</span>{% endif %}
+            </td>
+            <td>{{ m.get_origem_display }}</td>
+            <td>{{ m.sku.produto.nome }} — {{ m.sku.codigo }}</td>
+            <td>{{ m.deposito.nome }}</td>
+            <td class="col-direita"><strong>{{ m.quantidade|floatformat:2 }}</strong></td>
+            {% if m.eh_saida %}
+              <td class="col-direita">
+                <input form="form-mov-{{ m.pk }}" type="number" name="preco_unitario" step="0.01" min="0"
+                       value="{{ m.preco_unitario|default_if_none:'' }}"
+                       class="form-control form-control-tabela" aria-label="Preço unitário">
+              </td>
+              <td class="col-direita">
+                {% if m.preco_unitario is not None %}<strong>{{ m.valor_total|floatformat:2 }}</strong>
+                {% else %}—{% endif %}
+              </td>
+              <td class="celula-status">
+                <select form="form-mov-{{ m.pk }}" name="status_pedido" class="form-control form-control-tabela">
+                  <option value="" {% if not m.status_pedido %}selected{% endif %}>Sem status</option>
+                  {% for valor, rotulo in status_choices %}
+                    <option value="{{ valor }}" {% if m.status_pedido == valor %}selected{% endif %}>{{ rotulo }}</option>
+                  {% endfor %}
+                </select>
+                <button form="form-mov-{{ m.pk }}" type="submit" class="btn btn-secundario btn-pequeno" title="Salvar preço/status/pagamento">Salvar</button>
+              </td>
+              <td class="celula-status">
+                <select form="form-mov-{{ m.pk }}" name="forma_pagamento" class="form-control form-control-tabela">
+                  <option value="" {% if not m.forma_pagamento %}selected{% endif %}>Sem forma definida</option>
+                  {% for valor, rotulo in formas_pagamento %}
+                    <option value="{{ valor }}" {% if m.forma_pagamento == valor %}selected{% endif %}>{{ rotulo }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td class="celula-status">
+                <input form="form-mov-{{ m.pk }}" type="text" name="prazo_pagamento"
+                       value="{{ m.prazo_pagamento|default_if_none:'' }}"
+                       class="form-control form-control-tabela" aria-label="Prazo de pagamento">
+              </td>
+            {% else %}
+              <td class="col-direita">—</td>
+              <td class="col-direita">—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+            {% endif %}
+            <td>{{ m.parceiro|default:"—" }}</td>
+            <td>{{ m.documento|default:"—" }}</td>
+            <td>
+              {% if m.origem == 'VENDA' %}
+                <a href="{% url 'movimentacao_pdf' m.pk %}" target="_blank" class="btn btn-secundario btn-pequeno" title="Emitir PDF do pedido nº {{ m.pk }}">PDF</a>
+              {% else %}
+                <span class="texto-suave">—</span>
+              {% endif %}
+            </td>
+            <td class="col-acoes">
+              <a href="{% url 'movimentacao_delete' m.pk %}" class="btn btn-link btn-link-perigo" title="Excluir esta movimentação">Excluir</a>
+            </td>
+            <td>{% if m.usuario %}{{ m.usuario.get_full_name|default:m.usuario.username }}{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+    <div class="paginacao">
+      {% if page_obj.has_previous %}
+        <a href="{% querystring page=page_obj.previous_page_number %}" class="btn btn-secundario btn-pequeno">← Anterior</a>
+      {% endif %}
+      <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="{% querystring page=page_obj.next_page_number %}" class="btn btn-secundario btn-pequeno">Próxima →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# Forms ocultos da edição inline (atributo HTML5 `form` liga os inputs da tabela a ele) #}
+  {% for m in movimentacoes %}
+    {% if m.eh_saida %}
+      <form id="form-mov-{{ m.pk }}" method="post" action="{% url 'movimentacao_atualizar_preco_status' m.pk %}" hidden>
+        {% csrf_token %}
+      </form>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <div class="vazio">Nenhuma movimentação registrada ainda. Registre uma <a href="{% url 'movimentacao_entrada' %}">entrada</a>.</div>
+{% endif %}
+
+{% endblock %}

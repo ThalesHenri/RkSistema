@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — RK Embalagens</title>
+  <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
+</head>
+<body class="pagina-login">
+  <div class="login-card">
+        <div class="login-marca">
+      <img src="{% static 'main/img/RkEmbalagensLogo.jpeg' %}" alt="RK Embalagens" class="login-logo">
+      <h1>RK Embalagens</h1>
+      <p>Embalando Sonhos — Gestão de estoque</p>
+    </div>
+
+    <div class="acoes-titulo" style="justify-content:center;margin-bottom:14px;">
+      <button type="button" id="botao-tema" class="btn btn-secundario btn-pequeno" title="Alternar tema claro/escuro">🌙</button>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alerta alerta-erro">
+        {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="campo">
+        <label for="{{ form.username.id_for_label }}">Usuário</label>
+        {{ form.username }}
+      </div>
+      <div class="campo">
+        <label for="{{ form.password.id_for_label }}">Senha</label>
+        {{ form.password }}
+      </div>
+      <button type="submit" class="btn btn-primario btn-largo">Entrar</button>
+    </form>
+  </div>
+
+<script>
+  (function () {
+    var raiz = document.documentElement;
+    var botao = document.getElementById("botao-tema");
+    var temaSalvo = null;
+    try { temaSalvo = localStorage.getItem("tema"); } catch (e) {}
+    var temaInicial = temaSalvo ||
+      (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro");
+
+    function aplicar(tema) {
+      raiz.setAttribute("data-tema", tema);
+      if (botao) botao.textContent = tema === "escuro" ? "☀️ Claro" : "🌙 Escuro";
+    }
+
+    aplicar(temaInicial);
+    if (botao) {
+      botao.addEventListener("click", function () {
+        var atual = raiz.getAttribute("data-tema") === "escuro" ? "claro" : "escuro";
+        try { localStorage.setItem("tema", atual); } catch (e) {}
+        aplicar(atual);
+      });
+    }
+  })();
+</script>
+</body>
+</html>

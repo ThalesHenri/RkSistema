@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}RK Embalagens{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+        <div class="marca">
+      <a href="{% url 'dashboard' %}" class="marca-link">
+        <img src="{% static 'main/img/RkEmbalagensLogo.jpeg' %}" alt="RK Embalagens" class="marca-logo">
+        <span>RK Embalagens</span>
+      </a>
+    </div>
+
+    <nav class="nav">
+      <span class="nav-grupo">Visão geral</span>
+      <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' %}ativo{% endif %}">
+        <span class="nav-icone">▦</span> Dashboard
+      </a>
+
+      <span class="nav-grupo">Estoque</span>
+      <a href="{% url 'estoque' %}" class="nav-link {% if '/estoque' in request.path and not '/entrada' in request.path and not '/saida' in request.path and not '/orcamento' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">☰</span> Saldos
+      </a>
+      <a href="{% url 'movimentacao_entrada' %}" class="nav-link {% if '/estoque/entrada' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">↑</span> Registrar entrada
+      </a>
+      <a href="{% url 'movimentacao_saida' %}" class="nav-link {% if '/estoque/saida' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">↓</span> Registrar saída
+      </a>
+      <a href="{% url 'movimentacao_producao' %}" class="nav-link {% if '/estoque/producao' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">⚙</span> Registrar produção
+      </a>
+      <a href="{% url 'movimentacoes' %}" class="nav-link {% if request.path == '/movimentacoes/' %}ativo{% endif %}">
+        <span class="nav-icone">≡</span> Movimentações
+      </a>
+      <a href="{% url 'pedidos' %}" class="nav-link {% if request.path == '/pedidos/' and request.GET.tipo != 'orcamento' %}ativo{% endif %}">
+        <span class="nav-icone">🛒</span> Pedidos
+      </a>
+      <a href="{% url 'pedidos' %}?tipo=orcamento" class="nav-link {% if request.path == '/pedidos/' and request.GET.tipo == 'orcamento' %}ativo{% endif %}">
+        <span class="nav-icone">📝</span> Orçamentos
+      </a>
+
+      <span class="nav-grupo">Cadastros</span>
+      <a href="{% url 'categoria_list' %}" class="nav-link {% if '/categorias' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">◫</span> Categorias
+      </a>
+      <a href="{% url 'unidade_list' %}" class="nav-link {% if '/unidades' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">ƒ</span> Unidades de medida
+      </a>
+      <a href="{% url 'produto_list' %}" class="nav-link {% if '/produtos' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">▤</span> Produtos
+      </a>
+      <a href="{% url 'sku_list' %}" class="nav-link {% if '/skus' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">#</span> SKUs
+      </a>
+      <a href="{% url 'parceiro_list' %}" class="nav-link {% if '/parceiros' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">◉</span> Clientes
+      </a>
+      <a href="{% url 'deposito_list' %}" class="nav-link {% if '/depositos' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">▣</span> Depósitos
+      </a>
+    </nav>
+  </aside>
+
+  <main class="conteudo">
+    <header class="topo">
+      <div class="topo-info">
+        {% if user.is_authenticated %}
+          <span class="topo-usuario">{{ user.get_full_name|default:user.username }}</span>
+          <button type="button" id="botao-tema" class="btn btn-secundario btn-pequeno" title="Alternar tema claro/escuro">🌙</button>
+          <form method="post" action="{% url 'logout' %}" class="form-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secundario btn-pequeno">Sair</button>
+          </form>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if messages %}
+      <div class="mensagens">
+        {% for message in messages %}
+          <div class="alerta alerta-{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block conteudo %}{% endblock %}
+  </main>
+</div>
+
+<script>
+  (function () {
+    var raiz = document.documentElement;
+    var botao = document.getElementById("botao-tema");
+    var temaSalvo = null;
+    try { temaSalvo = localStorage.getItem("tema"); } catch (e) {}
+    var temaInicial = temaSalvo ||
+      (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro");
+
+    function aplicar(tema) {
+      raiz.setAttribute("data-tema", tema);
+      if (botao) botao.textContent = tema === "escuro" ? "☀️ Claro" : "🌙 Escuro";
+    }
+
+    aplicar(temaInicial);
+    if (botao) {
+      botao.addEventListener("click", function () {
+        var atual = raiz.getAttribute("data-tema") === "escuro" ? "claro" : "escuro";
+        try { localStorage.setItem("tema", atual); } catch (e) {}
+        aplicar(atual);
+      });
+    }
+  })();
+</script>
+</body>
+</html>

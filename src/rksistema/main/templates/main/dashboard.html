@@ -1,0 +1,209 @@
+{% extends "main/base.html" %}
+{% block title %}Dashboard — RK Embalagens{% endblock %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Visão geral do estoque, dos cadastros e alertas de reposição.</p>
+  </div>
+  <div class="acoes-titulo">
+    <a href="{% url 'movimentacao_saida' %}" class="btn btn-destaque" title="Tirar um novo pedido de cliente">＋ Novo pedido</a>
+    <a href="{% url 'orcamento_novo' %}" class="btn btn-secundario" title="Criar um orçamento (pedido simulado, não movimenta estoque)">＋ Novo orçamento</a>
+  </div>
+</div>
+
+<div class="painel painel-metricas">
+  <div class="painel-cabecalho">
+    <h2>{% if parceiro_filtro %}Métricas — {{ parceiro_filtro.nome_fantasia|default:parceiro_filtro.razao_social }}{% else %}Métricas financeiras{% endif %}</h2>
+    <form method="get" class="filtros filtros-multiplos filtros-periodo">
+      <label for="parceiro">Cliente</label>
+      <select name="parceiro" id="parceiro" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for p in parceiros %}
+          <option value="{{ p.pk }}" {% if parceiro_filtro and parceiro_filtro.pk == p.pk %}selected{% endif %}>{{ p.nome_fantasia|default:p.razao_social }}</option>
+        {% endfor %}
+      </select>
+      <label for="produto">Produto</label>
+      <select name="produto" id="produto" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for pr in produtos %}
+          <option value="{{ pr.pk }}" {% if produto_filtro and produto_filtro.pk == pr.pk %}selected{% endif %}>{{ pr.nome }}</option>
+        {% endfor %}
+      </select>
+      <label for="sku">SKU</label>
+      <select name="sku" id="sku" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for sk in skus %}
+          <option value="{{ sk.pk }}" {% if sku_filtro and sku_filtro.pk == sk.pk %}selected{% endif %}>{{ sk.produto.nome }} — {{ sk.codigo }}</option>
+        {% endfor %}
+      </select>
+      <label for="periodo">Período</label>
+      <select name="periodo" id="periodo" onchange="this.form.submit()">
+        <option value="all" {% if not periodo_dias %}selected{% endif %}>Todo o período</option>
+        <option value="30" {% if periodo_dias == 30 %}selected{% endif %}>Últimos 30 dias</option>
+        <option value="90" {% if periodo_dias == 90 %}selected{% endif %}>Últimos 90 dias</option>
+        <option value="180" {% if periodo_dias == 180 %}selected{% endif %}>Últimos 180 dias</option>
+      </select>
+      {% if parceiro_filtro or produto_filtro or sku_filtro %}
+        <a href="{% url 'dashboard' %}" class="btn btn-secundario btn-pequeno">Limpar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="cartoes cartoes-metricas">
+    <div class="cartao metrica metrica-faturamento">
+      <span class="cartao-rotulo">Faturamento</span>
+      <span class="cartao-valor-grande">R$ {{ financeiro.faturamento|floatformat:2 }}</span>
+      <span class="cartao-rotulo">{{ financeiro.num_pedidos }} pedido{{ financeiro.num_pedidos|pluralize }}</span>
+    </div>
+    <div class="cartao metrica metrica-lucro">
+      <span class="cartao-rotulo">Lucro bruto</span>
+      <span class="cartao-valor-grande">R$ {{ financeiro.lucro|floatformat:2 }}</span>
+      <span class="cartao-rotulo">faturamento − custo</span>
+    </div>
+    <div class="cartao metrica metrica-margem">
+      <span class="cartao-rotulo">Margem</span>
+      <span class="cartao-valor-grande">{{ financeiro.margem|floatformat:1 }}%</span>
+      <span class="cartao-rotulo">lucro ÷ faturamento</span>
+    </div>
+    <div class="cartao metrica metrica-faturado">
+      <span class="cartao-rotulo">Lucro Faturado</span>
+      <span class="cartao-valor-grande">R$ {{ financeiro.lucro_faturado|floatformat:2 }}</span>
+      <span class="cartao-rotulo">Lucro dos pedidos faturados</span>
+    </div>
+  </div>
+  <p class="nota-metrica">
+    * Faturamento/lucro priorizam o <strong>preço negociado na movimentação</strong> (preço
+    unitário da saída); se não informado, usam o <strong>preço atual do SKU</strong> nas saídas com
+    origem <strong>VENDA</strong>.
+  </p>
+</div>
+
+<div class="cartoes">
+  <a class="cartao" href="{% url 'produto_list' %}">
+    <span class="cartao-icone">▤</span>
+    <span class="cartao-valor">{{ totais.produtos }}</span>
+    <span class="cartao-rotulo">Produtos</span>
+  </a>
+  <a class="cartao" href="{% url 'sku_list' %}">
+    <span class="cartao-icone">#</span>
+    <span class="cartao-valor">{{ totais.skus }}</span>
+    <span class="cartao-rotulo">SKUs</span>
+  </a>
+  <a class="cartao" href="{% url 'parceiro_list' %}">
+    <span class="cartao-icone">◉</span>
+    <span class="cartao-valor">{{ totais.parceiros }}</span>
+    <span class="cartao-rotulo">Clientes</span>
+  </a>
+  <a class="cartao" href="{% url 'deposito_list' %}">
+    <span class="cartao-icone">▣</span>
+    <span class="cartao-valor">{{ totais.depositos }}</span>
+    <span class="cartao-rotulo">Depósitos</span>
+  </a>
+  <a class="cartao" href="{% url 'categoria_list' %}">
+    <span class="cartao-icone">◫</span>
+    <span class="cartao-valor">{{ totais.categorias }}</span>
+    <span class="cartao-rotulo">Categorias</span>
+  </a>
+  <a class="cartao" href="{% url 'movimentacoes' %}">
+    <span class="cartao-icone">≡</span>
+    <span class="cartao-valor">{{ totais.movimentacoes|default:'' }}</span>
+    <span class="cartao-rotulo">Movimentações</span>
+  </a>
+</div>
+
+<div class="cartoes cartoes-valor">
+  <div class="cartao cartao-plano">
+    <span class="cartao-rotulo">Valor do estoque (custo)</span>
+    <span class="cartao-valor-grande">{{ valor_custo|floatformat:2 }}</span>
+  </div>
+  <div class="cartao cartao-plano">
+    <span class="cartao-rotulo">Valor do estoque (venda)</span>
+    <span class="cartao-valor-grande">{{ valor_venda|floatformat:2 }}</span>
+  </div>
+</div>
+
+<div class="painel">
+  <div class="painel-cabecalho">
+    <h2>Estoque baixo</h2>
+    <a href="{% url 'estoque' %}" class="btn btn-link">Ver estoque</a>
+  </div>
+  {% if estoque_baixo %}
+    <table class="tabela">
+      <thead>
+        <tr><th>Produto</th><th>Tipo</th><th>Código</th><th>Saldo</th><th>Est. mínimo</th><th>Situação</th></tr>
+      </thead>
+      <tbody>
+        {% for item in estoque_baixo %}
+          <tr>
+            <td>{{ item.produto }}</td>
+            <td><span class="badge badge-info">{{ item.tipo }}</span></td>
+            <td>{{ item.codigo }}</td>
+            <td><strong>{{ item.saldo|floatformat:2 }}</strong></td>
+            <td>{{ item.estoque_minimo|floatformat:2 }}</td>
+            <td><span class="badge badge-perigo">Repor estoque</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="vazio">Nenhum SKU abaixo do estoque mínimo. Tudo certo! ✔</div>
+  {% endif %}
+</div>
+
+<div class="painel">
+  <div class="painel-cabecalho">
+    <h2>{% if parceiro_filtro %}Movimentações de {{ parceiro_filtro.nome_fantasia|default:parceiro_filtro.razao_social }}{% else %}Últimas movimentações{% endif %}</h2>
+    <a href="{% url 'movimentacoes' %}" class="btn btn-link">Ver todas</a>
+  </div>
+  {% if movimentacoes_recentes %}
+    <table class="tabela">
+      <thead>
+        <tr><th>Data</th><th>Tipo</th><th>SKU</th><th>Depósito</th><th>Qtd.</th><th>Origem</th><th>Cliente</th></tr>
+      </thead>
+      <tbody>
+        {% for m in movimentacoes_recentes %}
+          {% if m.eh_grupo %}
+            <tr class="linha-grupo-pedido">
+              <td>{{ m.data|date:"d/m/Y H:i" }}</td>
+              <td><span class="badge badge-perigo">Saída</span></td>
+              <td>
+                <strong>Pedido #{{ m.pedido_id }}</strong>
+                <span class="badge badge-info">{{ m.num_skus }} SKUs</span>
+                <a href="{% url 'movimentacao_pdf' m.item_pdf.pk %}" target="_blank" class="btn btn-link btn-pequeno" title="Ver o PDF completo do pedido nº {{ m.pedido_id }}">PDF</a>
+              </td>
+              <td>{{ m.deposito.nome }}</td>
+              <td><strong>{{ m.quantidade_total|floatformat:2 }}</strong></td>
+              <td>{{ m.origem_display }}</td>
+              <td>
+                {% for c in m.clientes %}{{ c }}{% if not forloop.last %}<br>{% endif %}{% empty %}{{ m.parceiro|default:"—" }}{% endfor %}
+              </td>
+            </tr>
+          {% else %}
+            {% with mv=m.movimentacao %}
+            <tr>
+              <td>{{ mv.data_movimentacao|date:"d/m/Y H:i" }}</td>
+              <td>
+                {% if mv.tipo == 'ENTRADA' %}<span class="badge badge-ok">Entrada</span>
+                {% elif mv.tipo == 'SAIDA' %}<span class="badge badge-perigo">Saída</span>
+                {% elif mv.tipo == 'AJUSTE_POSITIVO' %}<span class="badge badge-info">Ajuste +</span>
+                {% else %}<span class="badge badge-info">Ajuste −</span>{% endif %}
+              </td>
+              <td>{{ mv.sku.produto.nome }} — {{ mv.sku.codigo }}</td>
+              <td>{{ mv.deposito.nome }}</td>
+              <td><strong>{{ mv.quantidade|floatformat:2 }}</strong></td>
+              <td>{{ mv.get_origem_display }}</td>
+              <td>{{ mv.parceiro|default:"—" }}</td>
+            </tr>
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="vazio">Nenhuma movimentação registrada ainda. Comece por uma <a href="{% url 'movimentacao_entrada' %}">entrada</a>.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

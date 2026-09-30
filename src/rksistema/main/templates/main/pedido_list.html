@@ -1,0 +1,182 @@
+{% extends "main/base.html" %}
+{% load querystring_tags %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <div>
+    <h1>{% if parceiro_filtro %}Pedidos de {{ parceiro_filtro.nome_fantasia|default:parceiro_filtro.razao_social }}{% else %}Pedidos{% endif %}</h1>
+    <p>Todos os pedidos feitos a clientes, com seus produtos e totais.</p>
+  </div>
+  <div class="acoes-titulo">
+    <a href="{% url 'movimentacao_saida' %}" class="btn btn-destaque">＋ Novo pedido</a>
+    <a href="{% url 'orcamento_novo' %}" class="btn btn-secundario" title="Criar um orçamento (pedido simulado)">＋ Novo orçamento</a>
+    {% if num_orcamentos %}
+      <a href="{% url 'orcamentos_excluir_todos' %}" class="btn btn-perigo" title="Excluir todos os orçamentos cadastrados">Excluir orçamentos ({{ num_orcamentos }})</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" class="filtros filtros-multiplos">
+  <label for="parceiro">Cliente</label>
+  <select name="parceiro" id="parceiro" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for p in parceiros %}
+      <option value="{{ p.pk }}" {% if parceiro_filtro and parceiro_filtro.pk == p.pk %}selected{% endif %}>{{ p.nome_fantasia|default:p.razao_social }}</option>
+    {% endfor %}
+  </select>
+  <label for="status">Status do pedido</label>
+  <select name="status" id="status" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for valor, rotulo in status_choices %}
+      <option value="{{ valor }}" {% if status_filtro == valor %}selected{% endif %}>{{ rotulo }}</option>
+    {% endfor %}
+  </select>
+  <label for="tipo">Tipo</label>
+  <select name="tipo" id="tipo" onchange="this.form.submit()">
+    <option value="" {% if not tipo_filtro %}selected{% endif %}>Todos</option>
+    <option value="pedido" {% if tipo_filtro == 'pedido' %}selected{% endif %}>Pedidos</option>
+    <option value="orcamento" {% if tipo_filtro == 'orcamento' %}selected{% endif %}>Orçamentos</option>
+  </select>
+  {% if parceiro_filtro or status_filtro or tipo_filtro %}
+    <a href="{% url 'pedidos' %}" class="btn btn-secundario btn-pequeno">Limpar</a>
+  {% endif %}
+</form>
+
+{% if linhas %}
+  <form method="post" action="{% url 'pedidos_status_em_lote' %}" class="filtros filtros-multiplos" id="form-status-em-lote">
+    {% csrf_token %}
+    <label for="status-em-lote">Alterar status dos pedidos selecionados</label>
+    <select name="status_pedido" id="status-em-lote" required>
+      <option value="">Selecione um status</option>
+      {% for valor, rotulo in status_choices %}
+        <option value="{{ valor }}">{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primario btn-pequeno">Aplicar aos selecionados</button>
+    <span class="ajuda">A seleção vale para os pedidos exibidos nesta página; orçamentos não podem ser atualizados por esta ação.</span>
+  </form>
+
+  <div class="cartao-tabela">
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th>Selecionar</th>
+          <th>Pedido</th>
+          <th>Data</th>
+          <th>Cliente</th>
+          <th>Doc.</th>
+          <th>SKUs</th>
+          <th class="col-direita">Qtd. total</th>
+          <th class="col-direita">Valor total (R$)</th>
+          <th>Status do pedido</th>
+          <th>Pagamento</th>
+          <th>Prazo</th>
+          <th>PDF do pedido</th>
+          <th class="col-acoes">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in linhas %}
+          <tr>
+            <td>
+              {% if not p.eh_orcamento and p.primeiro_item %}
+                <input type="checkbox" name="pedido_ids" value="{{ p.pedido.pk }}"
+                       form="form-status-em-lote" aria-label="Selecionar pedido {{ p.pedido.pk }}">
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <strong>#{{ p.pedido.pk }}</strong>
+              {% if p.eh_orcamento %}<span class="badge badge-aviso">Orçamento</span>{% endif %}
+            </td>
+            <td>{{ p.pedido.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>
+              {% for c in p.clientes %}{{ c }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
+              {% if p.num_clientes > 1 %}
+                <span class="badge badge-info" title="{{ p.num_clientes }} clientes neste pedido">{{ p.num_clientes }} clientes</span>
+              {% endif %}
+            </td>
+            <td>{{ p.pedido.documento|default:"—" }}</td>
+            <td><span class="badge badge-info">{{ p.num_skus }} SKU{{ p.num_skus|pluralize }}</span></td>
+            <td class="col-direita"><strong>{{ p.quantidade_total|floatformat:2 }}</strong></td>
+            <td class="col-direita">
+              {% if p.valor_total is not None %}<strong>{{ p.valor_total|floatformat:2 }}</strong>
+              {% else %}—{% endif %}
+            </td>
+            {% if p.eh_orcamento %}
+              <td colspan="3"><span class="badge badge-aviso">Simulado — não movimenta estoque</span></td>
+            {% elif p.primeiro_item %}
+              <td class="celula-status">
+                <select form="form-pedido-{{ p.pedido.pk }}" name="status_pedido" class="form-control form-control-tabela">
+                  <option value="" {% if not p.status_pedido %}selected{% endif %}>Sem status</option>
+                  {% for valor, rotulo in status_choices %}
+                    <option value="{{ valor }}" {% if p.status_pedido == valor %}selected{% endif %}>{{ rotulo }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td class="celula-status">
+                <select form="form-pedido-{{ p.pedido.pk }}" name="forma_pagamento" class="form-control form-control-tabela">
+                  <option value="" {% if not p.forma_pagamento %}selected{% endif %}>Sem forma definida</option>
+                  {% for valor, rotulo in formas_pagamento %}
+                    <option value="{{ valor }}" {% if p.forma_pagamento == valor %}selected{% endif %}>{{ rotulo }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td class="celula-status">
+                <input form="form-pedido-{{ p.pedido.pk }}" type="text" name="prazo_pagamento"
+                       value="{{ p.prazo_pagamento|default_if_none:'' }}"
+                       class="form-control form-control-tabela" aria-label="Prazo de pagamento">
+              </td>
+            {% else %}
+              <td>—</td><td>—</td><td>—</td>
+            {% endif %}
+            <td>
+              {% if p.eh_orcamento and p.primeiro_item %}
+                <a href="{% url 'movimentacao_pdf' p.primeiro_item.pk %}" target="_blank" class="btn btn-secundario btn-pequeno" title="PDF do orçamento nº {{ p.pedido.pk }}">PDF orçamento</a>
+              {% elif p.pedido.origem == 'VENDA' and p.primeiro_item %}
+                <a href="{% url 'movimentacao_pdf' p.primeiro_item.pk %}" target="_blank" class="btn btn-secundario btn-pequeno" title="PDF do pedido nº {{ p.pedido.pk }}">PDF</a>
+              {% else %}
+                <span class="texto-suave">—</span>
+              {% endif %}
+            </td>
+            <td class="col-acoes">
+              {% if p.eh_orcamento %}
+                <a href="{% url 'orcamento_efetivar' p.pedido.pk %}" class="btn btn-primario btn-pequeno" title="Transformar este orçamento em pedido real">Efetivar</a>
+              {% elif p.primeiro_item %}
+                <button form="form-pedido-{{ p.pedido.pk }}" type="submit" class="btn btn-secundario btn-pequeno" title="Salvar status/pagamento/prazo">Salvar</button>
+              {% endif %}
+              <a href="{% url 'pedido_editar' p.pedido.pk %}" class="btn btn-secundario btn-pequeno" title="Editar cabeçalho e itens">Editar</a>
+              <form action="{% url 'pedido_excluir' p.pedido.pk %}" method="post" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este pedido?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link btn-link-perigo" title="Excluir este registro e seus itens">Excluir</button>
+              </form>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+    <div class="paginacao">
+      {% if page_obj.has_previous %}
+        <a href="{% querystring page=page_obj.previous_page_number %}" class="btn btn-secundario btn-pequeno">← Anterior</a>
+      {% endif %}
+      <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="{% querystring page=page_obj.next_page_number %}" class="btn btn-secundario btn-pequeno">Próximo →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# Formulários ocultos para a edição inline (o atributo HTML5 `form` vincula os inputs da tabela) #}
+  {% for p in linhas %}
+    {% if p.primeiro_item and not p.eh_orcamento %}
+      <form id="form-pedido-{{ p.pedido.pk }}" method="post" action="{% url 'movimentacao_atualizar_preco_status' p.primeiro_item.pk %}" hidden>
+        {% csrf_token %}
+      </form>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <div class="vazio">Ainda não há pedidos nem orçamentos. Crie o primeiro com <a href="{% url 'movimentacao_saida' %}">＋ Novo pedido</a> ou <a href="{% url 'orcamento_novo' %}">＋ Novo orçamento</a>.</div>
+{% endif %}
+
+{% endblock %}

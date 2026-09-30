@@ -1,0 +1,96 @@
+classDiagram
+    direction LR
+
+    class Categoria {
+        +str nome
+        +Categoria categoria_pai
+        +bool ativo
+        +DateTime criado_em
+        +DateTime atualizado_em
+    }
+
+    class UnidadeMedida {
+        +str sigla
+        +str nome
+        +DateTime criado_em
+        +DateTime atualizado_em
+    }
+
+    class Produto {
+        +str tipo_produto (MATERIA_PRIMA|PRODUTO_ACABADO)
+        +str nome
+        +Categoria categoria
+        +str descricao
+        +bool ativo
+        +DateTime criado_em
+        +DateTime atualizado_em
+    }
+
+    class SKU {
+        +Produto produto
+        +str codigo
+        +str codigo_barras
+        +str tamanho_capacidade
+        +str cor
+        +UnidadeMedida unidade_medida
+        +decimal estoque_minimo
+        +decimal preco_custo
+        +decimal preco_venda
+        +bool ativo
+        +DateTime criado_em
+        +DateTime atualizado_em
+    }
+
+    class Parceiro {
+        +str tipo (FORNECEDOR|CLIENTE|AMBOS)
+        +str razao_social
+        +str nome_fantasia
+        +str cnpj_cpf
+        +str telefone
+        +str email
+        +str endereco
+        +bool ativo
+        +DateTime criado_em
+        +DateTime atualizado_em
+        +pode_fornecer() bool
+        +pode_comprar() bool
+    }
+
+    class Deposito {
+        +str nome
+        +str endereco
+        +bool ativo
+        +DateTime criado_em
+        +DateTime atualizado_em
+    }
+
+    class Movimentacao {
+        +SKU sku
+        +Deposito deposito
+        +str tipo (ENTRADA|SAIDA|AJUSTE_POSITIVO|AJUSTE_NEGATIVO)
+        +str origem (COMPRA|VENDA|PRODUCAO|PERDA|AJUSTE_INVENTARIO|DEVOLUCAO_CLIENTE|DEVOLUCAO_FORNECEDOR)
+        +decimal quantidade
+        +decimal preco_unitario (negociado na venda, null = preço do SKU)
+        +str status_pedido (PENDENTE|FATURADO|ENTREGUE|CANCELADO)
+        +Parceiro parceiro
+        +str documento
+        +str lote
+        +User usuario
+        +DateTime data_movimentacao
+        +str observacao
+        +Movimentacao movimentacao_origem
+        +DateTime criado_em
+        +DateTime atualizado_em
+        +eh_entrada bool
+        +eh_saida bool
+        +valor_total decimal
+    }
+
+    Categoria "0..1" --> "many" Categoria : categoria_pai
+    Categoria "1" --> "many" Produto : categoria
+    Produto "1" --> "many" SKU : produto
+    UnidadeMedida "1" --> "many" SKU : unidade_medida
+    SKU "1" --> "many" Movimentacao : sku
+    Deposito "1" --> "many" Movimentacao : deposito
+    Parceiro "0..1" --> "many" Movimentacao : parceiro
+    Movimentacao "0..1" --> "many" Movimentacao : movimentacao_origem (estorno)

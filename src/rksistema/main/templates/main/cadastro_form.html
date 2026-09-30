@@ -1,0 +1,41 @@
+{% extends "main/base.html" %}
+{% block conteudo %}
+
+<div class="pagina-titulo">
+  <h1>{{ titulo }}</h1>
+</div>
+
+<form method="post" novalidate class="form-card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alerta alerta-erro">
+      {% for erro in form.non_field_errors %}<p>{{ erro }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  {% for campo in form %}
+    <div class="campo {% if campo.errors %}campo-erro{% endif %}">
+      <label for="{{ campo.id_for_label }}">
+        {{ campo.label }}{% if campo.field.required %} <span class="obrigatorio">*</span>{% endif %}
+      </label>
+      {% if campo.field.widget.input_type == "checkbox" %}
+        <div class="checkbox-wrapper">
+          {{ campo }}
+          {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+        </div>
+      {% else %}
+        {{ campo }}
+        {% if campo.help_text %}<span class="ajuda">{{ campo.help_text }}</span>{% endif %}
+      {% endif %}
+      {% for erro in campo.errors %}<span class="texto-erro">{{ erro }}</span>{% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="acoes-form">
+    <a href="{% url url_lista %}" class="btn btn-secundario">Cancelar</a>
+    <button type="submit" class="btn btn-primario">Salvar</button>
+  </div>
+</form>
+
+{% endblock %}
