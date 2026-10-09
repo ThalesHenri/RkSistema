@@ -248,6 +248,42 @@ class ServicoPedidoPdfTestCase(BasePedidoPdfTestCase):
         self.assertNotIn("Depósito".encode("latin-1"), conteudo)
         self.assertNotIn(b"Lote", conteudo)
 
+    # --- faixas vazadas (economia de tinta) + resumo nas duas vias ----------
+
+    def test_pdf_pedido_vazado_sem_retangulos_pretos(self):
+        # As faixas pretas (1ª via, RECIBO DE ENTREGA, cabeçalho da tabela de
+        # itens) viraram vazadas: o PDF não pode conter NENHUM retângulo
+        # preenchido (operador "re f"). O destaque agora é por contorno.
+        conteudo = _texto_pdf(gerar_pdf_pedido(self.saida, usuario=self.usuario))
+        self.assertNotIn(b"re f", conteudo)
+        # os textos dos antigos banners seguem presentes (agora pretos)
+        self.assertIn("1ª VIA".encode("latin-1"), conteudo)
+        self.assertIn("2ª VIA".encode("latin-1"), conteudo)
+        self.assertIn(b"RECIBO DE ENTREGA", conteudo)
+
+    def test_total_do_pedido_aparece_nas_duas_vias(self):
+        # Antes só a 1ª via trazia a linha de total; agora as duas mostram.
+        conteudo = _texto_pdf(gerar_pdf_pedido(self.saida, usuario=self.usuario))
+        self.assertEqual(
+            conteudo.count("PREÇO TOTAL DO PEDIDO".encode("latin-1")), 2
+        )
+        # 5 x R$ 8,50 = R$ 42,50 (preço negociado)
+        self.assertIn(b"42.50", conteudo)
+
+    def test_relatorio_vazado_sem_faixa_preta_e_usa_qtd(self):
+        conteudo = _texto_pdf(
+            gerar_pdf_relatorio_pedidos(
+                Movimentacao.objects.filter(pk=self.saida.pk),
+                usuario=self.usuario,
+            )
+        )
+        # Listras/cabeçalho/TOTAL sem preenchimento preto (só listra cinza-clara
+        # e texto; preto aparece apenas como cor de TEXTO, nunca de retângulo).
+        self.assertIsNone(re.search(rb"0 0 0 rg\s*[0-9.\- ]+re f", conteudo))
+        # Cabeçalho em português: Qtd. (não mais a abreviação "Cant.")
+        self.assertIn(b"Qtd.", conteudo)
+        self.assertNotIn(b"Cant.", conteudo)
+
 class ViewPedidoPdfTestCase(BasePedidoPdfTestCase):
     def setUp(self):
         self._entrada()

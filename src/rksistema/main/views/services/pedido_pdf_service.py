@@ -141,7 +141,7 @@ def _moeda(valor):
 def _cabecalho(titulo, subtitulo):
     """Bloque de cabeçalho comum: marca + título (lista plana de Flowables)."""
     return [
-        Paragraph("StockPlastic — Gestão de estoque", _estilos()["marca"]),
+        Paragraph("RK Embalagens — Gestão de estoque", _estilos()["marca"]),
         Paragraph(
             f"Emitido: {datetime.now():%d/%m/%Y %H:%M}",
             _estilos()["subtitulo"],
@@ -212,6 +212,8 @@ def _tabla_rotulo_valor(datos, col1, col2):
         )
     )
     return tabla
+
+
 def _tabla_item(movimentacao, estilos=None):
     s = estilos or _estilos()
     cabeceras = [
@@ -237,9 +239,10 @@ def _tabla_item(movimentacao, estilos=None):
     tabla.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), COR_DOURADO),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                # Cabeçalho vazado (sem faixa preta) para economizar tinta:
+                # o destaque vem do GRID + linha própria abaixo do cabeçalho.
                 ("GRID", (0, 0), (-1, -1), 0.4, COR_BORDA),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.8, colors.black),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("TOPPADDING", (0, 0), (-1, -1), 3),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
@@ -256,7 +259,7 @@ def _pie_pagina(canvas, doc):
     canvas.drawCentredString(
         A4[0] / 2,
         9 * mm,
-        f"StockPlastic · Página {doc.page} · Emitido {datetime.now():%d/%m/%Y %H:%M}",
+        f"RK Embalagens · Página {doc.page} · Emitido {datetime.now():%d/%m/%Y %H:%M}",
     )
     canvas.restoreState()
 
@@ -295,23 +298,22 @@ class _LinhaTesoura(Flowable):
 
 
 def _banner_via(rotulo, largura, cor_fundo=None, segunda_via=False):
-    """Faixa monocromática que destaca qual via do pedido é esta.
+    """Faixa vazada que destaca qual via do pedido é esta.
 
-    As duas vias usam apenas preto e branco; a segunda fica sem preenchimento.
+    As duas vias são preto sobre branco SEM preenchimento (economia de tinta);
+    o contorno (BOX) dá o destaque que a faixa cheia dava antes.
+    `cor_fundo`/`segunda_via` são mantidos na assinatura por compatibilidade,
+    mas não alteram mais as cores.
     """
-    if cor_fundo is None:
-        cor_fundo = colors.white if segunda_via else COR_PRIMARIA_ESCURA
     s = _estilos()
     estilo_banner = ParagraphStyle(
         "banner", parent=s["titulo"], fontSize=16, leading=19,
-        textColor=colors.black if segunda_via else colors.white,
+        textColor=colors.black,
     )
     banner = Table([[Paragraph(rotulo, estilo_banner)]], colWidths=[largura])
     banner.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), cor_fundo),
-                ("TEXTCOLOR", (0, 0), (-1, -1), colors.black if segunda_via else colors.white),
                 ("BOX", (0, 0), (-1, -1), 0.8, colors.black),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
@@ -336,8 +338,8 @@ def _recibo_entrega(movimentacao, largura, estilos=None):
     titulo.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.black),
-                ("TEXTCOLOR", (0, 0), (-1, -1), colors.white),
+                # Faixa vazada: contorno no lugar do preenchimento preto.
+                ("BOX", (0, 0), (-1, -1), 0.8, colors.black),
                 ("TOPPADDING", (0, 0), (-1, -1), 3),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                 ("LEFTPADDING", (0, 0), (-1, -1), 10),
@@ -383,7 +385,7 @@ def _conteudo_via(
 
     # Cabeçalho da via: faixa destacada + título + dados em duas colunas
     col = (largura - 4 * mm) / 2
-    pedido_col = 32 * mm
+    pedido_col = 42 * mm
     valor_col = col - pedido_col
     esq = _tabla_rotulo_valor(_datos_pedido(movimentacao, s), pedido_col, valor_col)
     dir_ = _tabla_rotulo_valor(
@@ -436,19 +438,20 @@ def _conteudo_via(
     ))
     conteudo.append(Spacer(1, 1 * mm))
     conteudo.append(_tabla_item(movimentacao, s))
-    if not segunda_via:
-        rotulo_total = (
-            "VALOR TOTAL DO ORÇAMENTO"
-            if tipo_documento == "ORCAMENTO"
-            else "PREÇO TOTAL DO PEDIDO"
+    # Linha de resumo (qtd./preço unit. por item na tabela acima) + total
+    # aparece nas DUAS vias — a 2ª via não dependia do recibo para o valor.
+    rotulo_total = (
+        "VALOR TOTAL DO ORÇAMENTO"
+        if tipo_documento == "ORCAMENTO"
+        else "PREÇO TOTAL DO PEDIDO"
+    )
+    conteudo.append(Spacer(1, 1 * mm))
+    conteudo.append(
+        Paragraph(
+            f"{rotulo_total}: {_moeda(_total_pedido(movimentacao))}",
+            s["celula_bold_direita"],
         )
-        conteudo.append(Spacer(1, 1 * mm))
-        conteudo.append(
-            Paragraph(
-                f"{rotulo_total}: {_moeda(_total_pedido(movimentacao))}",
-                s["celula_bold_direita"],
-            )
-        )
+    )
 
     if movimentacao.observacao:
         conteudo.append(Spacer(1, 1 * mm))
@@ -470,6 +473,12 @@ def _conteudo_via(
     elif segunda_via:
         conteudo.append(Spacer(1, 2 * mm))
         conteudo.extend(_recibo_entrega(movimentacao, largura, s))
+    else:
+        # 1ª via do pedido: linha de assinatura da empresa — uma por via.
+        conteudo.append(Spacer(1, 2 * mm))
+        conteudo.append(
+            Paragraph("Assinatura: ____________________________________", s["celula"])
+        )
 
     return conteudo
 
@@ -508,7 +517,7 @@ def gerar_pdf_pedido(movimentacao, usuario=None, tipo_documento=None):
         topMargin=12 * mm,
         bottomMargin=12 * mm,
         title=f"{'Orçamento' if tipo_documento == 'ORCAMENTO' else 'Pedido'} #{numero_documento}",
-        author="RkEmbalagens",
+        author="RK Embalagens",
         onFirstPage=_pie_pagina,
     )
 
@@ -527,8 +536,10 @@ def gerar_pdf_pedido(movimentacao, usuario=None, tipo_documento=None):
         )
     )
 
-    doc.build(historia)
+    doc.build(historia, onFirstPage=_pie_pagina, onLaterPages=_pie_pagina)
     return buffer.getvalue()
+
+
 def gerar_pdf_relatorio_pedidos(movimentacoes, filtros=None, usuario=None):
     """Gera o listado de pedidos de clientes filtrável.
 
@@ -559,7 +570,7 @@ def gerar_pdf_relatorio_pedidos(movimentacoes, filtros=None, usuario=None):
         Paragraph("Nº pedido", s["celula_bold"]),
         Paragraph("Cliente", s["celula_bold"]),
         Paragraph("SKU / Produto", s["celula_bold"]),
-        Paragraph("Cant.", s["celula_bold_direita"]),
+        Paragraph("Qtd.", s["celula_bold_direita"]),
         Paragraph("Preço unit.", s["celula_bold_direita"]),
         Paragraph("Total", s["celula_bold_direita"]),
         Paragraph("Status", s["celula_bold"]),
@@ -604,10 +615,10 @@ def gerar_pdf_relatorio_pedidos(movimentacoes, filtros=None, usuario=None):
         filas,
         colWidths=[26 * mm, 16 * mm, 30 * mm, 42 * mm, 14 * mm, 20 * mm, 20 * mm, 16 * mm],
     )
+    # Cabeçalho e TOTAL vazados (sem faixas pretas) — destaque por linhas.
     estilo = [
-        ("BACKGROUND", (0, 0), (-1, 0), COR_PRIMARIA),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("GRID", (0, 0), (-1, -1), 0.4, COR_BORDA),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.8, colors.black),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -616,8 +627,7 @@ def gerar_pdf_relatorio_pedidos(movimentacoes, filtros=None, usuario=None):
         estilo.append(
             ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, COR_STRIPE])
         )
-        estilo.append(("BACKGROUND", (0, -1), (-1, -1), COR_PRIMARIA_ESCURA))
-        estilo.append(("TEXTCOLOR", (0, -1), (-1, -1), colors.white))
+        estilo.append(("LINEABOVE", (0, -1), (-1, -1), 0.8, colors.black))
     tabla.setStyle(TableStyle(estilo))
     historia.append(tabla)
 
@@ -636,9 +646,9 @@ def gerar_pdf_relatorio_pedidos(movimentacoes, filtros=None, usuario=None):
         topMargin=16 * mm,
         bottomMargin=16 * mm,
         title="Relatório de pedidos",
-        author="RkEmbalagens",
+        author="RK Embalagens",
         onFirstPage=_pie_pagina,
         onLaterPages=_pie_pagina,
     )
-    doc.build(historia)
+    doc.build(historia, onFirstPage=_pie_pagina, onLaterPages=_pie_pagina)
     return buffer.getvalue()
