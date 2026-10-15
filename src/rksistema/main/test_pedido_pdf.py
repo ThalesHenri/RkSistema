@@ -308,6 +308,19 @@ class ViewPedidoPdfTestCase(BasePedidoPdfTestCase):
         )
         self.assertTrue(resp.content.startswith(b"%PDF"))
 
+    def test_pdf_pedido_oculta_preco_unitario_quando_solicitado(self):
+        self.client.force_login(self.usuario)
+        resp = self.client.get(
+            reverse("movimentacao_pdf", args=[self.saida.pk]),
+            {"ocultar_valor_unitario": "1"},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        conteudo = _texto_pdf(resp.content)
+        self.assertNotIn(b"Pre\xe7o unit.", conteudo)
+        self.assertNotIn(b"8.50", conteudo)
+        self.assertIn(b"42.50", conteudo)
+
     def test_pdf_pedido_movimento_nao_venda_redireciona(self):
         perda = self._saida(origem="PERDA")
         self.client.force_login(self.usuario)

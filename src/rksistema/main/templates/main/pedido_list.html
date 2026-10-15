@@ -133,7 +133,11 @@
               {% if p.eh_orcamento and p.primeiro_item %}
                 <a href="{% url 'movimentacao_pdf' p.primeiro_item.pk %}" target="_blank" class="btn btn-secundario btn-pequeno" title="PDF do orçamento nº {{ p.pedido.pk }}">PDF orçamento</a>
               {% elif p.pedido.origem == 'VENDA' and p.primeiro_item %}
-                <a href="{% url 'movimentacao_pdf' p.primeiro_item.pk %}" target="_blank" class="btn btn-secundario btn-pequeno" title="PDF do pedido nº {{ p.pedido.pk }}">PDF</a>
+                <form method="get" action="{% url 'movimentacao_pdf' p.primeiro_item.pk %}" target="_blank" style="display:inline;">
+                  <button type="submit" class="btn btn-secundario btn-pequeno" title="PDF do pedido nº {{ p.pedido.pk }}">PDF</button>
+                  <br>
+                  <label><input type="checkbox" name="ocultar_valor_unitario" value="1"> Ocultar valor unitário</label>
+                </form>
               {% else %}
                 <span class="texto-suave">—</span>
               {% endif %}
@@ -149,6 +153,7 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-link btn-link-perigo" title="Excluir este registro e seus itens">Excluir</button>
               </form>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

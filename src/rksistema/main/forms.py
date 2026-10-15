@@ -9,6 +9,7 @@ from main.models import (
     SKU,
     Parceiro,
     Deposito,
+    SaldoDevedor,
 )
 from main.models.movimentacao import (
     ORIGEM_MOVIMENTACAO_CHOICES,
@@ -90,6 +91,25 @@ class DepositoForm(BaseModelForm):
     class Meta:
         model = Deposito
         fields = ["nome", "endereco", "ativo"]
+
+
+class SaldoDevedorForm(BaseModelForm):
+    class Meta:
+        model = SaldoDevedor
+        fields = ["tipo", "valor", "descricao"]
+
+    def clean(self):
+        dados = super().clean()
+        if (
+            dados.get("tipo") == SaldoDevedor.Tipo.PAGAMENTO
+            and dados.get("valor") is not None
+            and dados["valor"] > SaldoDevedor.saldo_atual()
+        ):
+            self.add_error(
+                "valor",
+                "O pagamento não pode ser maior que o saldo devedor atual.",
+            )
+        return dados
 
 
 class _MovimentacaoForm(forms.Form):

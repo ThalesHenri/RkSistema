@@ -46,6 +46,9 @@
       <a href="{% url 'pedidos' %}?tipo=orcamento" class="nav-link {% if request.path == '/pedidos/' and request.GET.tipo == 'orcamento' %}ativo{% endif %}">
         <span class="nav-icone">📝</span> Orçamentos
       </a>
+      <a href="{% url 'saldo_devedor_list' %}" class="nav-link {% if '/saldo-devedor' in request.path %}ativo{% endif %}">
+        <span class="nav-icone">$</span> Saldo devedor
+      </a>
 
       <span class="nav-grupo">Cadastros</span>
       <a href="{% url 'categoria_list' %}" class="nav-link {% if '/categorias' in request.path %}ativo{% endif %}">

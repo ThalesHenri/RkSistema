@@ -47,6 +47,10 @@ from main.views.pages.pedidos_pdf import (
     RelatorioPedidosPdfView,
 )
 from main.views.pages.pedidos import PedidoListView, PedidosStatusEmLoteView
+from main.views.pages.saldo_devedor import (
+    SaldoDevedorListView,
+    SaldoDevedorCreateView,
+)
 
 __all__ = [
     "CategoriaListView",
@@ -93,4 +97,6 @@ __all__ = [
     "RelatorioPedidosPdfView",
     "PedidoListView",
     "PedidosStatusEmLoteView",
+    "SaldoDevedorListView",
+    "SaldoDevedorCreateView",
 ]

@@ -13,6 +13,8 @@ from main.models.movimentacao import (
 )
 from main.models.pedido import Pedido
 from main.models.ajuste_saldo_cliente import AjusteSaldoCliente
+from main.models.saldo_devedor import SaldoDevedor
+
 
 __all__ = [
     "Categoria",
@@ -26,6 +28,7 @@ __all__ = [
     "Movimentacao",
     "Pedido",
     "AjusteSaldoCliente",
+    "SaldoDevedor",
     "TIPO_MOVIMENTACAO_CHOICES",
     "ORIGEM_MOVIMENTACAO_CHOICES",
     "STATUS_PEDIDO_CHOICES",

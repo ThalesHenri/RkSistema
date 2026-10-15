@@ -38,6 +38,9 @@ class MovimentacaoPedidoPdfView(LoginRequiredMixin, View):
             movimentacao,
             usuario=request.user,
             tipo_documento="ORCAMENTO" if eh_orcamento else "PEDIDO",
+            ocultar_preco_unitario=(
+                request.GET.get("ocultar_valor_unitario") == "1"
+            ),
         )
         numero = movimentacao.pedido_id or movimentacao.pk
         resposta = HttpResponse(pdf, content_type="application/pdf")

@@ -214,28 +214,36 @@ def _tabla_rotulo_valor(datos, col1, col2):
     return tabla
 
 
-def _tabla_item(movimentacao, estilos=None):
+def _tabla_item(movimentacao, estilos=None, ocultar_preco_unitario=False):
     s = estilos or _estilos()
     cabeceras = [
         Paragraph("Produto / SKU", s["celula_bold"]),
         Paragraph("Unidade", s["celula_bold"]),
         Paragraph("Quantidade", s["celula_bold_direita"]),
-        Paragraph("Preço unit.", s["celula_bold_direita"]),
         Paragraph("Total", s["celula_bold_direita"]),
     ]
+    if not ocultar_preco_unitario:
+        cabeceras.insert(3, Paragraph("Preço unit.", s["celula_bold_direita"]))
     filas = [cabeceras]
     for item in _itens_pedido(movimentacao):
-        filas.append([
+        linha = [
             Paragraph(_descricao_sku(item.sku), s["celula"]),
             Paragraph(item.sku.unidade_medida.sigla, s["celula"]),
             Paragraph(f"{item.quantidade:.2f}", s["celula_direita"]),
-            Paragraph(_moeda(_preco_unitario(item)), s["celula_direita"]),
             Paragraph(_moeda(_total(item)), s["celula_bold_direita"]),
-        ])
-    tabla = Table(
-        filas,
-        colWidths=[86 * mm, 20 * mm, 22 * mm, 26 * mm, 26 * mm],
+        ]
+        if not ocultar_preco_unitario:
+            linha.insert(
+                3,
+                Paragraph(_moeda(_preco_unitario(item)), s["celula_direita"]),
+            )
+        filas.append(linha)
+    larguras = (
+        [106 * mm, 20 * mm, 22 * mm, 32 * mm]
+        if ocultar_preco_unitario
+        else [86 * mm, 20 * mm, 22 * mm, 26 * mm, 26 * mm]
     )
+    tabla = Table(filas, colWidths=larguras)
     tabla.setStyle(
         TableStyle(
             [
@@ -377,7 +385,7 @@ def _recibo_entrega(movimentacao, largura, estilos=None):
 
 def _conteudo_via(
     movimentacao, usuario, rotulo, largura, segunda_via=False,
-    tipo_documento="PEDIDO",
+    tipo_documento="PEDIDO", ocultar_preco_unitario=False,
 ):
     """Flowables de uma via (1ª ou 2ª) do pedido."""
     s = _estilos(ampliado=True)
@@ -437,7 +445,12 @@ def _conteudo_via(
         s["subtitulo"],
     ))
     conteudo.append(Spacer(1, 1 * mm))
-    conteudo.append(_tabla_item(movimentacao, s))
+    conteudo.append(
+        _tabla_item(
+            movimentacao, s,
+            ocultar_preco_unitario=ocultar_preco_unitario,
+        )
+    )
     # Linha de resumo (qtd./preço unit. por item na tabela acima) + total
     # aparece nas DUAS vias — a 2ª via não dependia do recibo para o valor.
     rotulo_total = (
@@ -483,7 +496,10 @@ def _conteudo_via(
     return conteudo
 
 
-def gerar_pdf_pedido(movimentacao, usuario=None, tipo_documento=None):
+def gerar_pdf_pedido(
+    movimentacao, usuario=None, tipo_documento=None,
+    ocultar_preco_unitario=False,
+):
     """Gera o PDF individual de um pedido ou orçamento.
 
     Produz o pedido em UMA ÚNICA PÁGINA:
@@ -526,6 +542,7 @@ def gerar_pdf_pedido(movimentacao, usuario=None, tipo_documento=None):
         _conteudo_via(
             movimentacao, usuario, rotulo_via_1, largura,
             tipo_documento=tipo_documento,
+            ocultar_preco_unitario=ocultar_preco_unitario,
         )
     )
     historia.append(_LinhaTesoura(largura))
@@ -533,6 +550,7 @@ def gerar_pdf_pedido(movimentacao, usuario=None, tipo_documento=None):
         _conteudo_via(
             movimentacao, usuario, rotulo_via_2, largura,
             segunda_via=True, tipo_documento=tipo_documento,
+            ocultar_preco_unitario=ocultar_preco_unitario,
         )
     )
 

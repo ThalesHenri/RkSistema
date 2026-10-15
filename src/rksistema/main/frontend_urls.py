@@ -46,10 +46,14 @@ from .views.pages import (
     PedidoUpdateView,
     LimparSaldosClientesView,
     DesvincularClienteEntradaView,
+    SaldoDevedorListView,
+    SaldoDevedorCreateView,
 )
 
 urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
+    path("saldo-devedor/", SaldoDevedorListView.as_view(), name="saldo_devedor_list"),
+    path("saldo-devedor/novo/", SaldoDevedorCreateView.as_view(), name="saldo_devedor_create"),
     path(
         "login/",
         LoginView.as_view(

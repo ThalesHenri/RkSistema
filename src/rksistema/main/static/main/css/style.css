@@ -756,6 +756,9 @@ textarea:focus {
 .metrica-faturado {
   background: linear-gradient(135deg, #7b17a5, #bc4af1);
 }
+.metrica-saldo-devedor {
+  background: linear-gradient(135deg, #b45309, #ea580c);
+}
 .metrica-margem {
   background: linear-gradient(135deg, #D4AF37, #B8860B);
 }

@@ -72,6 +72,11 @@
       <span class="cartao-valor-grande">R$ {{ financeiro.lucro_faturado|floatformat:2 }}</span>
       <span class="cartao-rotulo">Lucro dos pedidos faturados</span>
     </div>
+    <a class="cartao metrica metrica-saldo-devedor" href="{% url 'saldo_devedor_list' %}">
+      <span class="cartao-rotulo">Saldo devedor em aberto</span>
+      <span class="cartao-valor-grande">R$ {{ totais.saldo_devedor|floatformat:2 }}</span>
+      <span class="cartao-rotulo">Ver débitos e pagamentos</span>
+    </a>
   </div>
   <p class="nota-metrica">
     * Faturamento/lucro priorizam o <strong>preço negociado na movimentação</strong> (preço

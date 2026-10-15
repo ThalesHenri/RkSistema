@@ -17,6 +17,7 @@ from main.models import (
     Deposito,
     Movimentacao,
     Pedido,
+    SaldoDevedor,
 )
 from main.views.pages.estoque import _calcular_saldos
 
@@ -75,6 +76,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "parceiros": Parceiro.objects.count(),
             "depositos": Deposito.objects.count(),
             "movimentacoes": total_movimentacoes - excedentes,
+            "saldo_devedor": SaldoDevedor.saldo_atual(),
         }
 
         movs = (
